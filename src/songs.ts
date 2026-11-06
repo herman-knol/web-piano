@@ -1,5 +1,5 @@
 import type { HeardNote } from "./listener";
-import { midiToName } from "./notes";
+import { midiToName, pitchMatches } from "./notes";
 import { Sheet, type Hand } from "./sheet";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -88,7 +88,7 @@ export class SongsMode {
     this.heardEl.textContent = midiToName(note.midi);
     if (this.done || !this.loaded) return;
     const expected = this.sheet.expected(this.hand());
-    const ok = expected.some((m) => (this.anyOctave ? (m - note.midi) % 12 === 0 : m === note.midi));
+    const ok = expected.some((m) => pitchMatches(m, note.midi, note.cents, this.anyOctave));
     if (ok) {
       this.correct++;
       this.flash("good");

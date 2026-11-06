@@ -1,6 +1,6 @@
 import type { Keyboard } from "./keyboard";
 import {
-  LEVELS, midiToName, writtenId, writtenMidi, writtenName,
+  LEVELS, midiToName, pitchMatches, writtenId, writtenMidi, writtenName,
   type Accidental, type Clef, type WrittenNote,
 } from "./notes";
 import { drawStaff, type StaffMark } from "./staff";
@@ -114,6 +114,7 @@ export class Trainer {
     this.wrongTries = 0;
     this.waiting = false;
     this.shownAt = performance.now();
+    this.ui.staff.dataset.target = String(writtenMidi(this.target)); // handy for automated tests
     this.redraw();
     this.setPrompt("Play this note", "");
     this.renderStats();
@@ -137,10 +138,10 @@ export class Trainer {
     return { step: name[0], acc: (name[1] ?? "") as Accidental, octave: Math.floor(midi / 12) - 1, clef };
   }
 
-  handle(midi: number): void {
+  handle(midi: number, cents = 0): void {
     if (this.waiting || !this.target) return;
     const want = writtenMidi(this.target);
-    const ok = this.anyOctave ? (want - midi) % 12 === 0 : want === midi;
+    const ok = pitchMatches(want, midi, cents, this.anyOctave);
     const id = writtenId(this.target);
     const s = (this.stats[id] ??= { seen: 0, correct: 0, time: 0 });
 
@@ -177,7 +178,9 @@ export class Trainer {
     const played = this.spell(midi);
     this.redraw(played ? { note: played, color: color("--bad") } : undefined);
     const tip = this.wrongTries >= 2 ? ` — it's ${writtenName(this.target)}` : " — try again";
-    this.setPrompt(`✗ You played ${midiToName(midi)}${tip}`, "bad");
+    const octaveOff = (want - midi) % 12 === 0;
+    const extra = octaveOff ? " (right note, wrong octave — the mic may have misheard; see “Accept any octave”)" : "";
+    this.setPrompt(`✗ You played ${midiToName(midi)}${tip}${extra}`, "bad");
     if (this.wrongTries >= 2) this.keyboard.flash(want, "good");
     this.renderStats();
   }

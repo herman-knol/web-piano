@@ -11,7 +11,7 @@ export interface ListenerOptions {
   onFrame?: (note: HeardNote | null, level: number) => void; // every analysis frame
 }
 
-const MIN_CLARITY = 0.9;
+const MIN_CLARITY = 0.85; // some piano notes (detuned unison strings) read a little less clearly
 const MIN_LEVEL = 0.01; // RMS below this counts as silence
 const STABLE_FRAMES = 3; // consecutive frames of the same pitch before we trust it
 const REATTACK_RATIO = 1.6; // level jump that counts as a new strike of the same key

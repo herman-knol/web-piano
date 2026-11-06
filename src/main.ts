@@ -1,7 +1,7 @@
 import "./style.css";
 import { Keyboard } from "./keyboard";
 import { Listener } from "./listener";
-import { LEVELS } from "./notes";
+import { LEVELS, midiToName } from "./notes";
 import { SongsMode } from "./songs";
 import { Trainer, type ClefChoice } from "./trainer";
 
@@ -33,7 +33,7 @@ const trainer = new Trainer(
 const songs = new SongsMode();
 
 function route(midi: number, cents = 0) {
-  if (settings.tab === "trainer") trainer.handle(midi);
+  if (settings.tab === "trainer") trainer.handle(midi, cents);
   else songs.handle({ midi, cents });
 }
 
@@ -41,9 +41,23 @@ function route(midi: number, cents = 0) {
 const micButton = $<HTMLButtonElement>("mic");
 const micStatus = $("micStatus");
 const levelEl = $("level");
+const hearingEl = $("hearing");
+let lastHeardAt = 0;
 const listener = new Listener({
   onNote: (n) => route(n.midi, n.cents),
-  onFrame: (_n, level) => { levelEl.style.width = `${Math.min(100, level * 600)}%`; },
+  onFrame: (n, level) => {
+    levelEl.style.width = `${Math.min(100, level * 600)}%`;
+    // Live tuner readout: shows exactly what the mic hears, incl. how far off-pitch it is.
+    const now = performance.now();
+    if (n) {
+      lastHeardAt = now;
+      hearingEl.textContent = `${midiToName(n.midi)} ${n.cents >= 0 ? "+" : "−"}${Math.abs(n.cents)}¢`;
+      hearingEl.classList.toggle("off", Math.abs(n.cents) > 30);
+    } else if (now - lastHeardAt > 600) {
+      hearingEl.textContent = "–";
+      hearingEl.classList.remove("off");
+    }
+  },
 });
 micButton.addEventListener("click", async () => {
   if (listener.running) {

@@ -10,6 +10,21 @@ export function midiToName(midi: number): string {
   return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
 }
 
+/**
+ * How far (in semitones) a heard pitch may be from the written note and still count.
+ * Acoustic pianos often have single keys that are noticeably out of tune; plain rounding would turn
+ * an F that is 55 cents flat into an "E". 0.65 accepts a key up to 65 cents off while still
+ * rejecting the neighbouring semitone unless that one is more than 35 cents out of tune itself.
+ */
+export const TUNING_TOLERANCE = 0.65;
+
+/** Does a heard pitch (MIDI note + cents) count as the target note? */
+export function pitchMatches(target: number, midi: number, cents: number, anyOctave: boolean): boolean {
+  let diff = midi + cents / 100 - target;
+  if (anyOctave) diff -= 12 * Math.round(diff / 12);
+  return Math.abs(diff) <= TUNING_TOLERANCE;
+}
+
 export type Clef = "treble" | "bass";
 export type Accidental = "" | "#" | "b";
 

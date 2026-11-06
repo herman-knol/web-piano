@@ -66,6 +66,8 @@ button.link { border: none; background: none; color: var(--accent); padding: 0; 
 .tabs button[aria-selected="true"] { background: var(--bg); border-color: var(--border); font-weight: 600; }
 .mic { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-left: auto; font-size: 0.9rem; }
 .meter { width: 80px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.hearing { font-variant-numeric: tabular-nums; min-width: 9.5em; }
+.hearing b.off { color: var(--bad); }
 .meter div { height: 100%; width: 0; background: var(--accent); transition: width 60ms; }
 
 .view { width: 100%; max-width: 1000px; margin: 0 auto; padding: 16px; flex: 1; }
