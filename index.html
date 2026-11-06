@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Piano Teacher</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Piano Teacher</h1>
+      <div class="controls">
+        <label>Song
+          <select id="song">
+            <option value="songs/ode-to-joy.musicxml">Ode to Joy (Beethoven)</option>
+            <option value="songs/twinkle-twinkle.musicxml">Twinkle Twinkle Little Star</option>
+          </select>
+        </label>
+        <label class="file">Open your own MusicXML…
+          <input id="file" type="file" accept=".xml,.musicxml,.mxl" />
+        </label>
+        <label>Hand
+          <select id="hand">
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+          </select>
+        </label>
+        <label title="Microphones often hear a piano note an octave too high or low">
+          <input id="anyOctave" type="checkbox" checked /> Accept any octave
+        </label>
+        <label><input id="hint" type="checkbox" /> Show note names</label>
+        <button id="restart">Restart</button>
+        <button id="mic" class="primary">Start listening</button>
+      </div>
+    </header>
+
+    <section class="status">
+      <div><span class="label">Play</span><span id="target" class="big">–</span></div>
+      <div><span class="label">Heard</span><span id="heard" class="big">–</span></div>
+      <div class="meter"><div id="level"></div></div>
+      <div><span class="label">Progress</span><span id="progress">0 correct · 0 wrong</span></div>
+      <div id="message" class="message">Press “Start listening”, then play the note under the cursor.</div>
+    </section>
+
+    <main id="sheet"></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
