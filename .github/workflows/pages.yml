@@ -25,9 +25,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # Requires Settings → Pages → Source: "GitHub Actions" (a one-time repo setting).
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
