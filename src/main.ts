@@ -1,129 +1,108 @@
-import { Listener, type HeardNote } from "./listener";
-import { midiToName } from "./notes";
-import { Sheet, type Hand } from "./sheet";
+import "./style.css";
+import { Keyboard } from "./keyboard";
+import { Listener } from "./listener";
+import { LEVELS } from "./notes";
+import { SongsMode } from "./songs";
+import { Trainer, type ClefChoice } from "./trainer";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const songSelect = $<HTMLSelectElement>("song");
-const fileInput = $<HTMLInputElement>("file");
-const handSelect = $<HTMLSelectElement>("hand");
-const anyOctave = $<HTMLInputElement>("anyOctave");
-const hint = $<HTMLInputElement>("hint");
-const micButton = $<HTMLButtonElement>("mic");
-const targetEl = $("target");
-const heardEl = $("heard");
-const levelEl = $("level");
-const progressEl = $("progress");
-const messageEl = $("message");
 
-const sheet = new Sheet($("sheet"));
-let songKey = "";
-let correct = 0;
-let wrong = 0;
-let done = false;
+// ---- Settings persisted per browser -------------------------------------------------------
+const SETTINGS_KEY = "settings:v1";
+interface Settings { tab: "trainer" | "songs"; clef: ClefChoice; level: number; anyOctave: boolean }
+let settings: Settings = { tab: "trainer", clef: "treble", level: 0, anyOctave: false };
+try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; } catch { /* ignore */ }
+const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ } };
 
-const hand = () => handSelect.value as Hand;
-
-function bestKey() {
-  return `best:${songKey}:${hand()}`;
-}
-
-function updateStatus() {
-  const expected = sheet.expected(hand());
-  targetEl.textContent = done ? "✓" : hint.checked && expected.length ? midiToName(expected[0]) : "♪";
-  progressEl.textContent = `${correct} correct · ${wrong} wrong`;
-}
-
-function restart() {
-  correct = 0;
-  wrong = 0;
-  done = false;
-  sheet.reset();
-  sheet.skipEmpty(hand());
-  messageEl.textContent = listener.running ? "Listening… play the note under the cursor." : "Press “Start listening”, then play the note under the cursor.";
-  updateStatus();
-}
-
-async function loadSong(content: string | Blob, key: string) {
-  messageEl.textContent = "Loading…";
-  try {
-    await sheet.load(content);
-    songKey = key;
-    restart();
-    if (sheet.staffCount < 2 && hand() === "left") handSelect.value = "right";
-  } catch (err) {
-    messageEl.textContent = `Could not open that file: ${(err as Error).message}`;
-  }
-}
-
-function flash(el: HTMLElement, cls: string) {
-  el.classList.remove("flash-good", "flash-bad");
-  void el.offsetWidth;
-  el.classList.add(cls);
-}
-
-function onNote(note: HeardNote) {
-  heardEl.textContent = midiToName(note.midi);
-  if (done) return;
-  const expected = sheet.expected(hand());
-  const ok = expected.some((m) => (anyOctave.checked ? (m - note.midi) % 12 === 0 : m === note.midi));
-  if (ok) {
-    correct++;
-    flash(heardEl, "flash-good");
-    sheet.next(hand());
-    if (sheet.finished) {
-      done = true;
-      const accuracy = Math.round((100 * correct) / (correct + wrong));
-      let best = 0;
-      try { best = Number(localStorage.getItem(bestKey()) || 0); } catch {}
-      if (accuracy > best) try { localStorage.setItem(bestKey(), String(accuracy)); } catch {}
-      messageEl.textContent = `Finished! Accuracy ${accuracy}%.${accuracy > best ? " — new best!" : ` (best ${best}%)`} Press Restart to play again.`;
-    }
-  } else {
-    wrong++;
-    flash(heardEl, "flash-bad");
-    if (hint.checked) messageEl.textContent = `That was ${midiToName(note.midi)} — try ${midiToName(expected[0])}.`;
-  }
-  updateStatus();
-}
-
-const listener = new Listener({
-  onNote,
-  onFrame: (_note, level) => {
-    levelEl.style.width = `${Math.min(100, level * 600)}%`;
+// ---- Modes --------------------------------------------------------------------------------
+const keyboard = new Keyboard($("keyboard"), 36, 84, (midi) => route(midi)); // C2–C6
+const trainer = new Trainer(
+  {
+    staff: $("staff"),
+    prompt: $("prompt"),
+    streak: $("streak"),
+    accuracy: $("accuracy"),
+    avgTime: $("avgTime"),
+    timer: $("timer"),
+    best: $("best"),
+    masteryGrid: $("mastery"),
+    challengeButton: $<HTMLButtonElement>("challenge"),
   },
-});
+  keyboard,
+);
+const songs = new SongsMode();
 
+function route(midi: number, cents = 0) {
+  if (settings.tab === "trainer") trainer.handle(midi);
+  else songs.handle({ midi, cents });
+}
+
+// ---- Microphone ---------------------------------------------------------------------------
+const micButton = $<HTMLButtonElement>("mic");
+const micStatus = $("micStatus");
+const levelEl = $("level");
+const listener = new Listener({
+  onNote: (n) => route(n.midi, n.cents),
+  onFrame: (_n, level) => { levelEl.style.width = `${Math.min(100, level * 600)}%`; },
+});
 micButton.addEventListener("click", async () => {
   if (listener.running) {
     listener.stop();
-    micButton.textContent = "Start listening";
-    messageEl.textContent = "Stopped listening.";
+    micButton.textContent = "🎤 Start listening";
+    micButton.classList.remove("on");
+    micStatus.textContent = "Mic off — you can also click the keys below";
     return;
   }
   try {
     await listener.start();
-    micButton.textContent = "Stop listening";
-    messageEl.textContent = "Listening… play the note under the cursor.";
+    micButton.textContent = "🎤 Listening";
+    micButton.classList.add("on");
+    micStatus.textContent = "Play on your piano";
   } catch (err) {
-    messageEl.textContent = `Microphone not available: ${(err as Error).message}`;
+    micStatus.textContent = `Microphone not available: ${(err as Error).message}`;
   }
 });
 
-songSelect.addEventListener("change", async () => {
-  const res = await fetch(songSelect.value);
-  loadSong(await res.text(), songSelect.value);
-});
+// ---- Controls -----------------------------------------------------------------------------
+const clefSelect = $<HTMLSelectElement>("clef");
+const levelSelect = $<HTMLSelectElement>("levelSelect");
+const levelDesc = $("levelDesc");
+const anyOctave = $<HTMLInputElement>("anyOctave");
 
-fileInput.addEventListener("change", async () => {
-  const file = fileInput.files?.[0];
-  if (!file) return;
-  const content = file.name.toLowerCase().endsWith(".mxl") ? file : await file.text();
-  await loadSong(content, `file:${file.name}`);
-  fileInput.value = "";
-});
+LEVELS.forEach((l, i) => levelSelect.add(new Option(l.name, String(i))));
 
-handSelect.addEventListener("change", restart);
-hint.addEventListener("change", updateStatus);
-$("restart").addEventListener("click", restart);
+function applySettings() {
+  trainer.clef = settings.clef;
+  trainer.level = settings.level;
+  trainer.anyOctave = settings.anyOctave;
+  songs.anyOctave = settings.anyOctave;
+  levelDesc.textContent = LEVELS[settings.level].description;
+}
 
-songSelect.dispatchEvent(new Event("change"));
+clefSelect.value = settings.clef;
+levelSelect.value = String(settings.level);
+anyOctave.checked = settings.anyOctave;
+applySettings();
+
+clefSelect.addEventListener("change", () => { settings.clef = clefSelect.value as ClefChoice; saveSettings(); applySettings(); trainer.reset(); });
+levelSelect.addEventListener("change", () => { settings.level = Number(levelSelect.value); saveSettings(); applySettings(); trainer.reset(); });
+anyOctave.addEventListener("change", () => { settings.anyOctave = anyOctave.checked; saveSettings(); applySettings(); });
+$("clearStats").addEventListener("click", () => { if (confirm("Forget all note statistics?")) trainer.clearStats(); });
+
+// ---- Tabs ---------------------------------------------------------------------------------
+function showTab(tab: Settings["tab"]) {
+  settings.tab = tab;
+  saveSettings();
+  document.querySelectorAll<HTMLElement>("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  $("trainerView").hidden = tab !== "trainer";
+  $("songsView").hidden = tab !== "songs";
+  if (tab === "songs") songs.show();
+}
+document.querySelectorAll<HTMLElement>("[data-tab]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab as Settings["tab"])));
+
+// Redraw the staff when the colour scheme changes (VexFlow paints fixed colours).
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => trainer.redraw());
+
+showTab(settings.tab);
+trainer.reset();
+keyboard.scrollTo(60);

@@ -3,13 +3,71 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Piano Teacher</title>
-    <link rel="stylesheet" href="/src/style.css" />
+    <meta name="description" content="Learn to read piano notes. Play them on your piano and the app listens through your microphone." />
+    <title>Piano Note Trainer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎹</text></svg>" />
   </head>
   <body>
-    <header>
-      <h1>Piano Teacher</h1>
-      <div class="controls">
+    <header class="topbar">
+      <h1>🎹 Note Trainer</h1>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="trainer">Note trainer</button>
+        <button role="tab" data-tab="songs">Songs</button>
+      </nav>
+      <div class="mic">
+        <button id="mic" class="primary">🎤 Start listening</button>
+        <div class="meter" aria-hidden="true"><div id="level"></div></div>
+        <span id="micStatus" class="muted">Mic off — you can also click the keys below</span>
+      </div>
+    </header>
+
+    <!-- ===================== Note trainer ===================== -->
+    <section id="trainerView" class="view">
+      <div class="settings">
+        <label>Clef
+          <select id="clef">
+            <option value="treble">Treble (right hand)</option>
+            <option value="bass">Bass (left hand)</option>
+            <option value="both">Both</option>
+          </select>
+        </label>
+        <label>Level <select id="levelSelect"></select></label>
+        <span id="levelDesc" class="muted"></span>
+        <label title="Microphones sometimes hear a piano note an octave too high or low">
+          <input id="anyOctave" type="checkbox" /> Accept any octave
+        </label>
+      </div>
+
+      <div class="stage">
+        <div class="card staff-card">
+          <div id="staff" class="staff"></div>
+          <div id="prompt" class="prompt">Play this note</div>
+        </div>
+
+        <div class="tiles">
+          <div class="tile"><span class="label">Streak</span><span id="streak" class="value">0</span></div>
+          <div class="tile"><span class="label">Accuracy</span><span id="accuracy" class="value">–</span></div>
+          <div class="tile"><span class="label">Avg time</span><span id="avgTime" class="value">–</span></div>
+          <div class="tile"><span class="label">Time left</span><span id="timer" class="value">–</span></div>
+          <div class="tile"><span class="label">Best 60s</span><span id="best" class="value">0</span></div>
+          <button id="challenge" class="challenge">60-second challenge</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Your notes</h2>
+          <span class="legend"><i class="chip new"></i>new <i class="chip weak"></i>weak <i class="chip ok"></i>getting there <i class="chip strong"></i>mastered</span>
+          <button id="clearStats" class="link">Reset</button>
+        </div>
+        <div id="mastery" class="mastery"></div>
+        <p class="muted small">Weak and new notes come up more often, so practice goes where you need it.</p>
+      </div>
+    </section>
+
+    <!-- ===================== Songs ===================== -->
+    <section id="songsView" class="view" hidden>
+      <div class="settings">
         <label>Song
           <select id="song">
             <option value="songs/ode-to-joy.musicxml">Ode to Joy (Beethoven)</option>
@@ -25,24 +83,21 @@
             <option value="left">Left</option>
           </select>
         </label>
-        <label title="Microphones often hear a piano note an octave too high or low">
-          <input id="anyOctave" type="checkbox" checked /> Accept any octave
-        </label>
         <label><input id="hint" type="checkbox" /> Show note names</label>
         <button id="restart">Restart</button>
-        <button id="mic" class="primary">Start listening</button>
       </div>
-    </header>
-
-    <section class="status">
-      <div><span class="label">Play</span><span id="target" class="big">–</span></div>
-      <div><span class="label">Heard</span><span id="heard" class="big">–</span></div>
-      <div class="meter"><div id="level"></div></div>
-      <div><span class="label">Progress</span><span id="progress">0 correct · 0 wrong</span></div>
-      <div id="message" class="message">Press “Start listening”, then play the note under the cursor.</div>
+      <div class="song-status">
+        <div><span class="label">Play</span><span id="target" class="value">–</span></div>
+        <div><span class="label">Heard</span><span id="heard" class="value">–</span></div>
+        <div><span class="label">Progress</span><span id="progress">0 correct · 0 wrong</span></div>
+        <span id="songMessage" class="muted"></span>
+      </div>
+      <div class="card sheet-card"><div id="sheet"></div></div>
     </section>
 
-    <main id="sheet"></main>
+    <footer>
+      <div id="keyboard"></div>
+    </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
